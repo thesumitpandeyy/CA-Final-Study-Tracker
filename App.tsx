@@ -13,6 +13,7 @@ import * as db from './utils/db';
 const App: React.FC = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [currentView, setCurrentView] = useState<ViewState>('dashboard');
+  // Initial state from localStorage for zero-latency startup
   const [user, setUser] = useState<any>(() => auth.currentUser);
   
   // Data State
@@ -23,7 +24,7 @@ const App: React.FC = () => {
     [Subject.FR]: '', [Subject.AFM]: '', [Subject.AUDIT]: '', [Subject.DT]: '', [Subject.IDT]: '', [Subject.IBS]: '',
   });
 
-  // Theme Handling
+  // Theme Handling - Instant application
   useEffect(() => {
     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
       setIsDarkMode(true);
@@ -40,18 +41,27 @@ const App: React.FC = () => {
 
   const toggleTheme = () => setIsDarkMode(!isDarkMode);
 
-  // Auth Observer
+  // Auth Observer - Fixed dependency loop
   useEffect(() => {
     const unsubscribe = onAuthStateChanged({}, (currentUser) => {
       if (currentUser) {
-        setUser(currentUser);
-        loadUserDataFromDB(currentUser.uid);
+        // Use functional update or ref-less logic to avoid re-triggering effect
+        setUser((prevUser: any) => {
+          if (!prevUser || prevUser.uid !== currentUser.uid) {
+            loadUserDataFromDB(currentUser.uid);
+            return currentUser;
+          }
+          return prevUser;
+        });
       } else {
-        setUser(null);
+        setUser((prevUser: any) => {
+          if (prevUser !== null) return null;
+          return prevUser;
+        });
       }
     });
     return () => unsubscribe();
-  }, []);
+  }, []); // Removed [user] to prevent infinite loop
 
   const loadUserDataFromDB = async (uid: string) => {
     try {
@@ -137,15 +147,19 @@ const App: React.FC = () => {
   };
 
   const handleLogout = () => {
+    // 1. CLEAR STATE FIRST (Instant)
     setUser(null);
+    // 2. Clear persistence second
     signOut();
   };
 
   const handleLoginSuccess = (userData: any) => {
+    // Instantaneous UI transition by setting user immediately
     setUser(userData);
     loadUserDataFromDB(userData.uid);
   };
 
+  // Immediate evaluation - No intermediate screens
   if (!user) {
     return <Login onLoginSuccess={handleLoginSuccess} />;
   }

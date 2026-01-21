@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { Subject, Chapter, SUBJECT_COLORS, SPOMExam } from '../types';
@@ -52,20 +53,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
   ];
 
   const getProgressBarColor = (percent: number) => {
-    if (percent === 100) return '#22C55E'; // Green
-    if (percent >= 50) return '#EAB308'; // Yellow
-    return '#EF4444'; // Red
+    if (percent === 100) return '#22C55E'; 
+    if (percent >= 50) return '#EAB308'; 
+    return '#EF4444'; 
   };
 
   return (
-    <div className="space-y-6 md:space-y-8 animate-fade-in pb-20 md:pb-10">
+    <div className="space-y-6 md:space-y-8 pb-20 md:pb-10">
       
-      {/* Hero Section 
-          Layout Fix: 
-          - grid-cols-1 (Mobile)
-          - md:grid-cols-2 (Tablet) -> Prevents collision
-          - xl:grid-cols-3 (Desktop) -> Full row
-      */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
         {/* Countdown Card */}
         <div className="bg-gradient-to-br from-indigo-600 to-violet-700 rounded-2xl p-6 text-white shadow-xl flex flex-col justify-between relative overflow-hidden h-40 md:h-auto min-h-[160px]">
@@ -114,7 +109,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
         </div>
 
-        {/* Focus Timer Widget - Spans 2 cols on tablet to look good */}
         <div className="md:col-span-2 xl:col-span-1">
             <Timer />
         </div>
@@ -196,7 +190,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
        </div>
 
-      {/* Subject Grid */}
       <div>
         <h2 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white mb-4 md:mb-6 flex items-center">
             <TrendingUp className="mr-2 w-6 h-6 text-indigo-500" /> Subject Breakdown
@@ -218,7 +211,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         </span>
                     </div>
                     
-                    {/* Completion Date Input */}
                     <div className="mb-4 flex items-center bg-slate-50 dark:bg-slate-700/50 rounded-lg px-3 py-2 border border-slate-100 dark:border-slate-700">
                         <Calendar size={14} className="text-slate-500 dark:text-slate-400 mr-2" />
                         <span className="text-xs font-medium text-slate-600 dark:text-slate-400 mr-2">Est. End:</span>
@@ -237,7 +229,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         </div>
                         <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
                             <div 
-                                className="h-2 rounded-full transition-all duration-500"
+                                className="h-2 rounded-full transition-all"
                                 style={{ 
                                     width: `${stat.percent}%`, 
                                     backgroundColor: getProgressBarColor(stat.percent)
@@ -253,7 +245,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* Today's Focus Checklist */}
       <div className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl p-4 md:p-6 border border-slate-200 dark:border-slate-700">
         <h2 className="text-lg md:text-xl font-bold text-slate-800 dark:text-white mb-4">Today's Targets</h2>
         <div className="space-y-3">

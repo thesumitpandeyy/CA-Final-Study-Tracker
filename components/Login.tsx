@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { GraduationCap, User, Mail, Lock, AlertCircle, ArrowRight } from 'lucide-react';
 import { loginUser, registerUser } from '../firebase';
@@ -9,7 +10,6 @@ interface LoginProps {
 export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form states
   const [username, setUsername] = useState('');
@@ -24,45 +24,31 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setIsSubmitting(true);
 
     try {
       let loggedInUser;
       if (isRegistering) {
-        // Registration Logic
-        if (!username || !email || !password || !confirmPassword) {
-          throw new Error('All fields are required.');
-        }
-        if (!validateEmail(email)) {
-          throw new Error('Invalid email format.');
-        }
-        if (password.length < 6) {
-          throw new Error('Password must be at least 6 characters.');
-        }
-        if (password !== confirmPassword) {
-          throw new Error('Passwords do not match.');
-        }
+        if (!username || !email || !password || !confirmPassword) throw new Error('All fields are required.');
+        if (!validateEmail(email)) throw new Error('Invalid email format.');
+        if (password.length < 6) throw new Error('Password must be at least 6 characters.');
+        if (password !== confirmPassword) throw new Error('Passwords do not match.');
         
         loggedInUser = await registerUser({ username, email, password });
       } else {
-        // Login Logic
-        if (!username || !password) {
-          throw new Error('Please fill in all fields.');
-        }
+        if (!username || !password) throw new Error('Please fill in all fields.');
         loggedInUser = await loginUser(username, password);
       }
       
-      // On success, notify parent instantly. No page reload.
+      // On success, notify parent instantly. No loaders.
       onLoginSuccess(loggedInUser);
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred.');
-      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4 transition-colors duration-300">
-      <div className="max-w-md w-full bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-fade-in">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
+      <div className="max-w-md w-full bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
         
         {/* Header Decor */}
         <div className="h-2 bg-indigo-600 w-full" />
@@ -82,7 +68,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
           </p>
 
           {error && (
-            <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 flex items-center gap-3 text-red-600 dark:text-red-400 text-sm animate-shake">
+            <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 flex items-center gap-3 text-red-600 dark:text-red-400 text-sm">
               <AlertCircle size={18} />
               <p className="text-left font-medium">{error}</p>
             </div>
@@ -109,7 +95,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             </div>
 
             {isRegistering && (
-              <div className="animate-fade-in">
+              <div>
                 <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1 ml-1">Email ID</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -145,7 +131,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             </div>
 
             {isRegistering && (
-              <div className="animate-fade-in">
+              <div>
                 <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1 ml-1">Confirm Password</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -165,17 +151,10 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
             <button
               type="submit"
-              disabled={isSubmitting}
-              className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-bold py-3.5 px-6 rounded-xl transition-all shadow-lg shadow-indigo-600/20 active:scale-[0.98] mt-2 group"
+              className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-6 rounded-xl transition-all shadow-lg shadow-indigo-600/20 active:scale-[0.98] mt-2 group"
             >
-              {isSubmitting ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <>
-                  {isRegistering ? 'Register' : 'Login'}
-                  <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                </>
-              )}
+              {isRegistering ? 'Register' : 'Login'}
+              <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
             </button>
           </form>
 
