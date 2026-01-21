@@ -1,18 +1,43 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, RefreshCw, Coffee, Settings } from 'lucide-react';
 
+const TIMER_STORAGE_KEY = 'ca_tracker_timer_state';
+
 export const Timer: React.FC = () => {
-  const [timeLeft, setTimeLeft] = useState(25 * 60);
+  // Load initial state from sessionStorage
+  const [timeLeft, setTimeLeft] = useState(() => {
+    const saved = sessionStorage.getItem(TIMER_STORAGE_KEY);
+    return saved ? JSON.parse(saved).timeLeft : 25 * 60;
+  });
   const [isActive, setIsActive] = useState(false);
-  const [mode, setMode] = useState<'focus' | 'break'>('focus');
-  const [customMinutes, setCustomMinutes] = useState(25);
+  const [mode, setMode] = useState<'focus' | 'break'>(() => {
+    const saved = sessionStorage.getItem(TIMER_STORAGE_KEY);
+    return saved ? JSON.parse(saved).mode : 'focus';
+  });
+  const [customMinutes, setCustomMinutes] = useState(() => {
+    const saved = sessionStorage.getItem(TIMER_STORAGE_KEY);
+    return saved ? JSON.parse(saved).customMinutes : 25;
+  });
   const [isEditing, setIsEditing] = useState(false);
+
+  // Use ref to avoid stale closure in effect
+  const stateRef = useRef({ timeLeft, mode, customMinutes });
+  stateRef.current = { timeLeft, mode, customMinutes };
+
+  // Sync state to sessionStorage
+  useEffect(() => {
+    sessionStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify({
+      timeLeft,
+      mode,
+      customMinutes
+    }));
+  }, [timeLeft, mode, customMinutes]);
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;
     if (isActive && timeLeft > 0) {
       interval = setInterval(() => {
-        setTimeLeft((time) => time - 1);
+        setTimeLeft((time: number) => time - 1);
       }, 1000);
     } else if (timeLeft === 0) {
       setIsActive(false);
