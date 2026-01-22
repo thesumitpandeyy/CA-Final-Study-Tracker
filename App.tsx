@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { MasterPlan } from './components/MasterPlan';
 import { Consistency } from './components/Consistency';
 import { Login } from './components/Login';
-import { MOCK_CHAPTERS, MOCK_LOGS, INITIAL_SPOM_EXAMS } from './constants';
 import { Chapter, ViewState, SPOMExam, Subject, StudyLog } from './types';
 import { auth, onAuthStateChanged, signOut } from './firebase';
 import * as db from './utils/db';
@@ -12,10 +11,10 @@ import * as db from './utils/db';
 const App: React.FC = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [currentView, setCurrentView] = useState<ViewState>('dashboard');
-  // Initial state from localStorage for zero-latency startup
   const [user, setUser] = useState<any>(() => auth.currentUser);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
   
-  // Data State - Starting blank
+  // Data State
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [spomExams, setSpomExams] = useState<SPOMExam[]>([]);
   const [logs, setLogs] = useState<StudyLog[]>([]);
@@ -23,45 +22,6 @@ const App: React.FC = () => {
   const [completionDates, setCompletionDates] = useState<Record<Subject, string>>({
     [Subject.FR]: '', [Subject.AFM]: '', [Subject.AUDIT]: '', [Subject.DT]: '', [Subject.IDT]: '', [Subject.IBS]: '',
   });
-
-  // Theme Handling - Instant application
-  useEffect(() => {
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setIsDarkMode(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [isDarkMode]);
-
-  const toggleTheme = () => setIsDarkMode(!isDarkMode);
-
-  // Auth Observer - Fixed dependency loop
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged({}, (currentUser) => {
-      if (currentUser) {
-        // Use functional update or ref-less logic to avoid re-triggering effect
-        setUser((prevUser: any) => {
-          if (!prevUser || prevUser.uid !== currentUser.uid) {
-            loadUserDataFromDB(currentUser.uid);
-            return currentUser;
-          }
-          return prevUser;
-        });
-      } else {
-        setUser((prevUser: any) => {
-          if (prevUser !== null) return null;
-          return prevUser;
-        });
-      }
-    });
-    return () => unsubscribe();
-  }, []);
 
   const loadUserDataFromDB = async (uid: string) => {
     try {
@@ -75,15 +35,44 @@ const App: React.FC = () => {
         if (data.metadata.currentView) setCurrentView(data.metadata.currentView);
         if (data.metadata.caFinalExamDate) setCaFinalExamDate(data.metadata.caFinalExamDate);
       }
+      setIsDataLoaded(true);
     } catch (e) {
       console.error("Error loading DB data", e);
     }
   };
 
-  // Sync state to IndexedDB on change (debounced)
+  // Auth Observer
   useEffect(() => {
-    if (!user) return;
+    const unsubscribe = onAuthStateChanged({}, (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+        loadUserDataFromDB(currentUser.uid);
+      } else {
+        setUser(null);
+        setIsDataLoaded(false);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Initial load if user is already present from localStorage
+  useEffect(() => {
+    if (user && !isDataLoaded) {
+      loadUserDataFromDB(user.uid);
+    }
+  }, []);
+
+  // Sync state to IndexedDB on change (debounced)
+  const isInitialMount = useRef(true);
+  useEffect(() => {
+    if (!user || !isDataLoaded) return;
     
+    // Prevent saving default blank state on initial mount before data is loaded
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
     const saveData = async () => {
       try {
         await db.updateUserData(user.uid, {
@@ -99,9 +88,26 @@ const App: React.FC = () => {
       }
     };
 
-    const timeoutId = setTimeout(saveData, 1000); 
+    const timeoutId = setTimeout(saveData, 800); 
     return () => clearTimeout(timeoutId);
-  }, [chapters, spomExams, logs, completionDates, currentView, user, caFinalExamDate]);
+  }, [chapters, spomExams, logs, completionDates, currentView, user, caFinalExamDate, isDataLoaded]);
+
+  // Theme Handling
+  useEffect(() => {
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      setIsDarkMode(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
+
+  const toggleTheme = () => setIsDarkMode(!isDarkMode);
 
   const daysLeft = useMemo(() => {
     if (!caFinalExamDate) return null;
@@ -164,6 +170,7 @@ const App: React.FC = () => {
 
   const handleLogout = () => {
     setUser(null);
+    setIsDataLoaded(false);
     signOut();
   };
 
@@ -174,6 +181,18 @@ const App: React.FC = () => {
 
   if (!user) {
     return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
+
+  // Show a clean loading state until data is pulled from IndexedDB
+  if (!isDataLoaded) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-slate-500 dark:text-slate-400 font-medium">Syncing your study data...</p>
+        </div>
+      </div>
+    );
   }
 
   return (

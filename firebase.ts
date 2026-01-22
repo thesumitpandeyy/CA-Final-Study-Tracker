@@ -1,4 +1,3 @@
-
 import * as db from './utils/db';
 
 const CURRENT_USER_KEY = 'ca_tracker_user';
@@ -23,7 +22,7 @@ const DEFAULT_USERS: LocalUser[] = [
   }
 ];
 
-// Seed default users on every initialization to simulate "cloud" presence
+// Seed default users to simulate database presence
 const seedDefaultUsers = async () => {
   for (const user of DEFAULT_USERS) {
     const existing = await db.getUserByIdentifier(user.username);
@@ -33,7 +32,6 @@ const seedDefaultUsers = async () => {
   }
 };
 
-// Start seeding immediately
 seedDefaultUsers();
 
 export const auth = {
@@ -84,4 +82,6 @@ export const onAuthStateChanged = (authObj: any, callback: (user: any) => void) 
   return () => {};
 };
 
-export { db as firestore };
+// Renamed for user familiarity as requested
+export const writeToFirestore = db.updateUserData;
+export const firestore = db;
