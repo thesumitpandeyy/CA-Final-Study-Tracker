@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { MasterPlan } from './components/MasterPlan';
 import { Consistency } from './components/Consistency';
 import { Login } from './components/Login';
-import { MOCK_CHAPTERS, MOCK_LOGS, EXAM_START_DATE, INITIAL_SPOM_EXAMS } from './constants';
+import { MOCK_CHAPTERS, MOCK_LOGS, INITIAL_SPOM_EXAMS } from './constants';
 import { Chapter, ViewState, SPOMExam, Subject, StudyLog } from './types';
 import { auth, onAuthStateChanged, signOut } from './firebase';
 import * as db from './utils/db';
@@ -16,10 +15,11 @@ const App: React.FC = () => {
   // Initial state from localStorage for zero-latency startup
   const [user, setUser] = useState<any>(() => auth.currentUser);
   
-  // Data State
-  const [chapters, setChapters] = useState<Chapter[]>(MOCK_CHAPTERS);
-  const [spomExams, setSpomExams] = useState<SPOMExam[]>(INITIAL_SPOM_EXAMS);
-  const [logs, setLogs] = useState<StudyLog[]>(MOCK_LOGS);
+  // Data State - Starting blank
+  const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [spomExams, setSpomExams] = useState<SPOMExam[]>([]);
+  const [logs, setLogs] = useState<StudyLog[]>([]);
+  const [caFinalExamDate, setCaFinalExamDate] = useState<string>('');
   const [completionDates, setCompletionDates] = useState<Record<Subject, string>>({
     [Subject.FR]: '', [Subject.AFM]: '', [Subject.AUDIT]: '', [Subject.DT]: '', [Subject.IDT]: '', [Subject.IBS]: '',
   });
@@ -61,18 +61,19 @@ const App: React.FC = () => {
       }
     });
     return () => unsubscribe();
-  }, []); // Removed [user] to prevent infinite loop
+  }, []);
 
   const loadUserDataFromDB = async (uid: string) => {
     try {
       const data = await db.loadUserFullData(uid);
-      if (data.chapters && data.chapters.length > 0) setChapters(data.chapters);
-      if (data.spomExams && data.spomExams.length > 0) setSpomExams(data.spomExams);
-      if (data.logs && data.logs.length > 0) setLogs(data.logs);
+      setChapters(data.chapters || []);
+      setSpomExams(data.spomExams || []);
+      setLogs(data.logs || []);
       
       if (data.metadata) {
         if (data.metadata.completionDates) setCompletionDates(data.metadata.completionDates);
         if (data.metadata.currentView) setCurrentView(data.metadata.currentView);
+        if (data.metadata.caFinalExamDate) setCaFinalExamDate(data.metadata.caFinalExamDate);
       }
     } catch (e) {
       console.error("Error loading DB data", e);
@@ -90,7 +91,8 @@ const App: React.FC = () => {
           spomExams,
           logs,
           completionDates,
-          currentView
+          currentView,
+          caFinalExamDate
         });
       } catch (e) {
         console.error("Error saving to DB", e);
@@ -99,13 +101,19 @@ const App: React.FC = () => {
 
     const timeoutId = setTimeout(saveData, 1000); 
     return () => clearTimeout(timeoutId);
-  }, [chapters, spomExams, logs, completionDates, currentView, user]);
+  }, [chapters, spomExams, logs, completionDates, currentView, user, caFinalExamDate]);
 
   const daysLeft = useMemo(() => {
+    if (!caFinalExamDate) return null;
     const today = new Date();
-    const diffTime = Math.abs(EXAM_START_DATE.getTime() - today.getTime());
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-  }, []);
+    today.setHours(0, 0, 0, 0);
+    const examDate = new Date(caFinalExamDate);
+    examDate.setHours(0, 0, 0, 0);
+    
+    const diffTime = examDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays >= 0 ? diffDays : 0;
+  }, [caFinalExamDate]);
 
   const handleToggleChapter = (id: string) => {
     setChapters(prev => prev.map(c => c.id === id ? { ...c, isCompleted: !c.isCompleted } : c));
@@ -125,6 +133,14 @@ const App: React.FC = () => {
 
   const handleUpdateSpom = (id: string, field: keyof SPOMExam, value: any) => {
     setSpomExams(prev => prev.map(exam => exam.id === id ? { ...exam, [field]: value } : exam));
+  };
+
+  const handleAddSpom = (exam: SPOMExam) => {
+    setSpomExams(prev => [...prev, exam]);
+  };
+
+  const handleDeleteSpom = (id: string) => {
+    setSpomExams(prev => prev.filter(e => e.id !== id));
   };
 
   const handleUpdateCompletionDate = (subject: Subject, date: string) => {
@@ -147,19 +163,15 @@ const App: React.FC = () => {
   };
 
   const handleLogout = () => {
-    // 1. CLEAR STATE FIRST (Instant)
     setUser(null);
-    // 2. Clear persistence second
     signOut();
   };
 
   const handleLoginSuccess = (userData: any) => {
-    // Instantaneous UI transition by setting user immediately
     setUser(userData);
     loadUserDataFromDB(userData.uid);
   };
 
-  // Immediate evaluation - No intermediate screens
   if (!user) {
     return <Login onLoginSuccess={handleLoginSuccess} />;
   }
@@ -183,8 +195,12 @@ const App: React.FC = () => {
               onToggleChapter={handleToggleChapter}
               spomExams={spomExams}
               onUpdateSpom={handleUpdateSpom}
+              onAddSpom={handleAddSpom}
+              onDeleteSpom={handleDeleteSpom}
               completionDates={completionDates}
               onUpdateCompletionDate={handleUpdateCompletionDate}
+              caFinalExamDate={caFinalExamDate}
+              onUpdateExamDate={setCaFinalExamDate}
             />
           )}
           {currentView === 'master-plan' && (

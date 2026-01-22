@@ -1,4 +1,3 @@
-
 import { LocalUser } from '../firebase';
 import { Chapter, SPOMExam, StudyLog, Subject } from '../types';
 
@@ -9,6 +8,7 @@ export interface UserData {
   uid: string;
   completionDates: Record<Subject, string>;
   currentView: string;
+  caFinalExamDate: string; // ISO Date string
 }
 
 export const initializeDB = (): Promise<IDBDatabase> => {
@@ -89,7 +89,8 @@ export const updateUserData = async (
     spomExams: SPOMExam[], 
     logs: StudyLog[], 
     completionDates: Record<Subject, string>,
-    currentView: string
+    currentView: string,
+    caFinalExamDate: string
   }
 ): Promise<void> => {
   const db = await initializeDB();
@@ -101,6 +102,7 @@ export const updateUserData = async (
       uid: userId,
       completionDates: data.completionDates,
       currentView: data.currentView,
+      caFinalExamDate: data.caFinalExamDate,
       updatedAt: new Date().toISOString()
     });
 

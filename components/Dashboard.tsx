@@ -1,23 +1,27 @@
-
 import React, { useEffect, useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { Subject, Chapter, SUBJECT_COLORS, SPOMExam } from '../types';
-import { CheckCircle2, Circle, Clock, TrendingUp, Award, Calendar } from 'lucide-react';
+import { CheckCircle2, Circle, Clock, TrendingUp, Award, Calendar, Plus, Trash2 } from 'lucide-react';
 import { Timer } from './Timer';
 import { SPOM_SET_C_SUBJECTS, SPOM_SET_D_SUBJECTS } from '../constants';
 
 interface DashboardProps {
   chapters: Chapter[];
-  daysLeft: number;
+  daysLeft: number | null;
   onToggleChapter: (id: string) => void;
   spomExams: SPOMExam[];
   onUpdateSpom: (id: string, field: keyof SPOMExam, value: any) => void;
+  onAddSpom: (exam: SPOMExam) => void;
+  onDeleteSpom: (id: string) => void;
   completionDates: Record<Subject, string>;
   onUpdateCompletionDate: (subject: Subject, date: string) => void;
+  caFinalExamDate: string;
+  onUpdateExamDate: (date: string) => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ 
-    chapters, daysLeft, onToggleChapter, spomExams, onUpdateSpom, completionDates, onUpdateCompletionDate 
+    chapters, daysLeft, onToggleChapter, spomExams, onUpdateSpom, onAddSpom, onDeleteSpom, 
+    completionDates, onUpdateCompletionDate, caFinalExamDate, onUpdateExamDate 
 }) => {
   
   const [isMobile, setIsMobile] = useState(false);
@@ -58,22 +62,40 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return '#EF4444'; 
   };
 
+  const handleAddExam = () => {
+      const id = `spom-${Date.now()}`;
+      onAddSpom({ id, set: 'Set A', subject: '', marks: '', status: 'Pending' });
+  };
+
   return (
     <div className="space-y-6 md:space-y-8 pb-20 md:pb-10">
       
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
         {/* Countdown Card */}
-        <div className="bg-gradient-to-br from-indigo-600 to-violet-700 rounded-2xl p-6 text-white shadow-xl flex flex-col justify-between relative overflow-hidden h-40 md:h-auto min-h-[160px]">
+        <div className="bg-gradient-to-br from-indigo-600 to-violet-700 rounded-2xl p-6 text-white shadow-xl flex flex-col justify-between relative overflow-hidden h-48 md:h-auto min-h-[180px]">
           <div className="absolute top-0 right-0 p-4 opacity-20">
             <Clock size={80} className="md:w-[100px] md:h-[100px]" />
           </div>
-          <div>
+          <div className="relative z-10">
             <h2 className="text-indigo-100 font-medium">CA Final Exam</h2>
-            <p className="text-xs text-indigo-200 opacity-80">May 1st, 2028</p>
+            <div className="mt-1 flex items-center gap-2">
+                <input 
+                    type="date"
+                    value={caFinalExamDate}
+                    onChange={(e) => onUpdateExamDate(e.target.value)}
+                    className="bg-white/10 hover:bg-white/20 transition-colors border border-white/20 rounded px-2 py-1 text-sm text-white font-medium outline-none focus:ring-2 focus:ring-white/50 cursor-pointer"
+                />
+            </div>
           </div>
-          <div>
-            <span className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tighter">{daysLeft}</span>
-            <span className="text-lg md:text-xl ml-2 font-medium opacity-80">Days Left</span>
+          <div className="relative z-10">
+            {daysLeft !== null ? (
+                <>
+                    <span className="text-5xl md:text-6xl font-bold tracking-tighter">{daysLeft}</span>
+                    <span className="text-lg md:text-xl ml-2 font-medium opacity-80">Days Left</span>
+                </>
+            ) : (
+                <span className="text-xl md:text-2xl font-bold opacity-60">Set Exam Date Above</span>
+            )}
           </div>
         </div>
 
@@ -116,9 +138,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
        {/* SPOM Exams Tracker */}
        <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 md:p-6 shadow-md border border-slate-200 dark:border-slate-700">
-          <h2 className="text-lg md:text-xl font-bold text-slate-800 dark:text-white mb-4 flex items-center">
-            <Award className="mr-2 text-amber-500" /> SPOM Exams
-          </h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg md:text-xl font-bold text-slate-800 dark:text-white flex items-center">
+                <Award className="mr-2 text-amber-500" /> SPOM Exams
+            </h2>
+            <button 
+                onClick={handleAddExam}
+                className="text-xs bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-3 py-1.5 rounded-lg font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/50 flex items-center gap-1 transition-all"
+            >
+                <Plus size={14} /> Add Exam
+            </button>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[600px] md:min-w-full">
               <thead>
@@ -127,12 +157,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   <th className="py-3 px-3 font-semibold">Subject</th>
                   <th className="py-3 px-3 w-32 font-semibold">Status</th>
                   <th className="py-3 px-3 w-24 font-semibold text-center">Marks</th>
+                  <th className="py-3 px-3 w-10 font-semibold text-center"></th>
                 </tr>
               </thead>
               <tbody>
-                {spomExams.map((exam) => (
+                {spomExams.length > 0 ? spomExams.map((exam) => (
                   <tr key={exam.id} className="border-b border-slate-100 dark:border-slate-800/50 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                    <td className="py-4 px-3 text-base font-semibold text-slate-800 dark:text-slate-200 align-middle">{exam.set}</td>
+                    <td className="py-4 px-3 align-middle">
+                        <select 
+                            value={exam.set}
+                            onChange={(e) => onUpdateSpom(exam.id, 'set', e.target.value)}
+                            className="bg-transparent border-none p-0 text-base font-semibold text-slate-800 dark:text-slate-200 outline-none focus:ring-0 cursor-pointer appearance-none"
+                        >
+                            <option value="Set A">Set A</option>
+                            <option value="Set B">Set B</option>
+                            <option value="Set C">Set C</option>
+                            <option value="Set D">Set D</option>
+                        </select>
+                    </td>
                     <td className="py-4 px-3 align-middle">
                         {exam.set === 'Set C' ? (
                             <div className="relative">
@@ -157,7 +199,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                 </select>
                              </div>
                         ) : (
-                            <span className="text-base font-medium text-slate-900 dark:text-white">{exam.subject}</span>
+                            <input 
+                                type="text"
+                                value={exam.subject}
+                                onChange={(e) => onUpdateSpom(exam.id, 'subject', e.target.value)}
+                                placeholder="Enter subject name..."
+                                className="w-full bg-transparent border-none p-0 text-base font-medium text-slate-900 dark:text-white outline-none focus:ring-0"
+                            />
                         )}
                     </td>
                     <td className="py-4 px-3 align-middle">
@@ -183,8 +231,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         className="w-full bg-transparent border-b-2 border-slate-200 dark:border-slate-600 focus:border-indigo-500 focus:outline-none text-center text-base font-medium text-slate-900 dark:text-white"
                       />
                     </td>
+                    <td className="py-4 px-3 align-middle text-center">
+                        <button onClick={() => onDeleteSpom(exam.id)} className="text-slate-300 hover:text-red-500 transition-colors">
+                            <Trash2 size={16} />
+                        </button>
+                    </td>
                   </tr>
-                ))}
+                )) : (
+                    <tr>
+                        <td colSpan={5} className="py-10 text-center text-slate-400 italic">No exams added yet. Click "Add Exam" to start tracking.</td>
+                    </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -194,55 +251,62 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <h2 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white mb-4 md:mb-6 flex items-center">
             <TrendingUp className="mr-2 w-6 h-6 text-indigo-500" /> Subject Breakdown
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            {subjectStats.map((stat) => (
-                <div key={stat.subject} className="group bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm hover:shadow-md border border-slate-200 dark:border-slate-700 transition-all">
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="flex-1 min-w-0 pr-2">
-                             <h4 className="font-semibold text-lg text-slate-800 dark:text-slate-100 truncate">{stat.subject}</h4>
+        {totalChapters > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                {subjectStats.map((stat) => (
+                    <div key={stat.subject} className="group bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm hover:shadow-md border border-slate-200 dark:border-slate-700 transition-all">
+                        <div className="flex justify-between items-start mb-4">
+                            <div className="flex-1 min-w-0 pr-2">
+                                <h4 className="font-semibold text-lg text-slate-800 dark:text-slate-100 truncate">{stat.subject}</h4>
+                            </div>
+                            <span 
+                                className="px-2 py-1 rounded text-xs font-bold text-white shrink-0"
+                                style={{ backgroundColor: SUBJECT_COLORS[stat.subject] }}
+                            >
+                                {stat.subject === Subject.AFM ? 'AFM' : 
+                                stat.subject === Subject.FR ? 'FR' :
+                                stat.subject === Subject.AUDIT ? 'AUDIT' : 'SUB'}
+                            </span>
                         </div>
-                        <span 
-                            className="px-2 py-1 rounded text-xs font-bold text-white shrink-0"
-                            style={{ backgroundColor: SUBJECT_COLORS[stat.subject] }}
-                        >
-                            {SUBJECT_COLORS[stat.subject] === '#10B981' ? 'AFM' : 
-                             SUBJECT_COLORS[stat.subject] === '#3B82F6' ? 'FR' :
-                             SUBJECT_COLORS[stat.subject] === '#8B5CF6' ? 'AUDIT' : 'SUB'}
-                        </span>
-                    </div>
-                    
-                    <div className="mb-4 flex items-center bg-slate-50 dark:bg-slate-700/50 rounded-lg px-3 py-2 border border-slate-100 dark:border-slate-700">
-                        <Calendar size={14} className="text-slate-500 dark:text-slate-400 mr-2" />
-                        <span className="text-xs font-medium text-slate-600 dark:text-slate-400 mr-2">Est. End:</span>
-                        <input 
-                            type="date"
-                            value={completionDates[stat.subject] || ''}
-                            onChange={(e) => onUpdateCompletionDate(stat.subject, e.target.value)}
-                            className="bg-transparent text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none w-full"
-                        />
-                    </div>
-
-                    <div className="space-y-2">
-                        <div className="flex justify-between text-sm text-slate-600 dark:text-slate-400 font-medium">
-                            <span>Progress</span>
-                            <span className="text-slate-800 dark:text-white">{stat.percent}%</span>
-                        </div>
-                        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
-                            <div 
-                                className="h-2 rounded-full transition-all"
-                                style={{ 
-                                    width: `${stat.percent}%`, 
-                                    backgroundColor: getProgressBarColor(stat.percent)
-                                }}
+                        
+                        <div className="mb-4 flex items-center bg-slate-50 dark:bg-slate-700/50 rounded-lg px-3 py-2 border border-slate-100 dark:border-slate-700">
+                            <Calendar size={14} className="text-slate-500 dark:text-slate-400 mr-2" />
+                            <span className="text-xs font-medium text-slate-600 dark:text-slate-400 mr-2">Est. End:</span>
+                            <input 
+                                type="date"
+                                value={completionDates[stat.subject] || ''}
+                                onChange={(e) => onUpdateCompletionDate(stat.subject, e.target.value)}
+                                className="bg-transparent text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none w-full"
                             />
                         </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 text-right mt-1 font-medium">
-                            {stat.done} / {stat.total} Chapters
-                        </p>
+
+                        <div className="space-y-2">
+                            <div className="flex justify-between text-sm text-slate-600 dark:text-slate-400 font-medium">
+                                <span>Progress</span>
+                                <span className="text-slate-800 dark:text-white">{stat.percent}%</span>
+                            </div>
+                            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                                <div 
+                                    className="h-2 rounded-full transition-all"
+                                    style={{ 
+                                        width: `${stat.percent}%`, 
+                                        backgroundColor: getProgressBarColor(stat.percent)
+                                    }}
+                                />
+                            </div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 text-right mt-1 font-medium">
+                                {stat.done} / {stat.total} Chapters
+                            </p>
+                        </div>
                     </div>
-                </div>
-            ))}
-        </div>
+                ))}
+            </div>
+        ) : (
+            <div className="bg-white dark:bg-slate-800 rounded-2xl p-12 text-center border-2 border-dashed border-slate-200 dark:border-slate-700">
+                <p className="text-slate-400 text-lg mb-2">No subjects found.</p>
+                <p className="text-slate-500 text-sm">Head to the <span className="font-bold text-indigo-500">Master Plan</span> tab to add your chapters and subjects.</p>
+            </div>
+        )}
       </div>
 
       <div className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl p-4 md:p-6 border border-slate-200 dark:border-slate-700">
@@ -266,7 +330,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 </div>
             )) : (
                 <div className="p-8 text-center text-slate-400 italic">
-                    All planned tasks completed! Great job.
+                    {totalChapters === 0 ? "No chapters planned yet. Start by adding chapters in the Master Plan." : "All planned tasks completed! Great job."}
                 </div>
             )}
         </div>
