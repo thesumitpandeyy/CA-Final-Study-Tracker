@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { GraduationCap, User, Mail, Lock, AlertCircle, ArrowRight } from 'lucide-react';
+import { GraduationCap, User, Mail, Lock, AlertCircle, ArrowRight, Linkedin } from 'lucide-react';
 import { loginUser, registerUser } from '../firebase';
 
 interface LoginProps {
@@ -174,10 +173,22 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
           </div>
         </div>
         
-        <div className="bg-slate-50 dark:bg-slate-800/50 p-4 text-center">
+        <div className="bg-slate-50 dark:bg-slate-800/50 p-4 pb-2 text-center">
           <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] font-black">
-            CA Final Tracker • Version 2.0
+            CA Study Tracker • Version 2.0
           </p>
+        </div>
+        
+        <div className="bg-slate-50 dark:bg-slate-800/50 p-4 pt-0 text-center border-t border-slate-100/50 dark:border-slate-700/50">
+          <a 
+            href="https://linkedin.com/in/sumit-kumar-pandey-ca-cma" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+          >
+            <span className="text-xs font-medium tracking-tight">Made by Sumit Kumar Pandey</span>
+            <Linkedin size={14} className="fill-current" />
+          </a>
         </div>
       </div>
     </div>
